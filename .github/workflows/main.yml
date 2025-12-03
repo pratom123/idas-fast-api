@@ -1,0 +1,86 @@
+name: CI-CD-FastAPI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+
+env:
+  PYTHON_VERSION: "3.14.0"
+
+jobs:
+  build-scan-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    # -------------------------
+    # 1. CHECKOUT CODE
+    # -------------------------
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    # -------------------------
+    # 2. SETUP PYTHON (OPTIONAL)
+    # -------------------------
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Install dependencies
+      run: |
+        pip install -r requirements.txt
+
+    # -------------------------
+    # 3. LOGIN TO DIGITALOCEAN REGISTRY
+    # -------------------------
+    - name: Docker Login DOCR
+      run: |
+        echo "${{ secrets.DOCKER_PASSWORD }}" | docker login \
+          -u "${{ secrets.DOCKER_USERNAME }}" \
+          --password-stdin ${{ secrets.DOCR_REGISTRY }}
+
+    # -------------------------
+    # 4. BUILD DOCKER IMAGE
+    # -------------------------
+    - name: Build Docker image
+      run: |
+        docker build -t fastapi-app .
+
+    # -------------------------
+    # 5. TAG & PUSH IMAGE TO DOCR
+    # -------------------------
+    - name: Tag & Push Image
+      run: |
+        docker tag fastapi-app ${{ secrets.DOCR_REGISTRY }}/fastapi-app:latest
+        docker push ${{ secrets.DOCR_REGISTRY }}/fastapi-app:latest
+
+    # -------------------------
+    # 6. TRIVY SCAN
+    # -------------------------
+    - name: Trivy Security Scan
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: ${{ secrets.DOCR_REGISTRY }}/fastapi-app:latest
+        format: 'table'
+        exit-code: '1'
+        ignore-unfixed: true
+        vuln-type: 'os,library'
+
+    # -------------------------
+    # 7. SETUP KUBECTL
+    # -------------------------
+    - name: Configure kubeconfig
+      run: |
+        mkdir -p ~/.kube
+        echo "${{ secrets.KUBE_CONFIG }}" > ~/.kube/config
+
+    # -------------------------
+    # 8. APPLY KUBERNETES DEPLOYMENT
+    # -------------------------
+    - name: Deploy to DigitalOcean Kubernetes
+      run: |
+        kubectl set image deployment/gpt-huggingface gptcontainer=${{ secrets.DOCR_REGISTRY }}/fastapi-app:latest
+        kubectl rollout status deployment/gpt-huggingface
+        kubectl apply -f deployment.yaml
+        kubectl apply -f service.yaml
