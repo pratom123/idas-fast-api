@@ -15,6 +15,7 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt .
 
 # Replace heavy GPU torch with CPU-only version
+RUN pip install --upgrade pip
 RUN sed -i 's/^torch.*/torch==2.3.0+cpu -f https:\/\/download.pytorch.org\/whl\/cpu\/torch_stable.html/' requirements.txt
 
 RUN pip install --user --no-cache-dir -r requirements.txt
