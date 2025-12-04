@@ -55,24 +55,24 @@ jobs:
         docker build -t fastapi-app .
 
     # -------------------------
-    # 5. TAG & PUSH IMAGE TO DOCR
+    # 5. TRIVY SCAN
+    # -------------------------
+    - name: Trivy Security Scan
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: "fastapi-app:latest"
+        format: 'table'
+        exit-code: '1'
+        ignore-unfixed: true
+        vuln-type: 'os,library'
+
+    # -------------------------
+    # 6. TAG & PUSH IMAGE TO DOCR
     # -------------------------
     - name: Tag & Push Image
       run: |
         docker tag fastapi-app ${{ secrets.DOCR_REGISTRY }}/fastapi-app:latest
         docker push ${{ secrets.DOCR_REGISTRY }}/fastapi-app:latest
-
-    # -------------------------
-    # 6. TRIVY SCAN
-    # -------------------------
-    - name: Trivy Security Scan
-      uses: aquasecurity/trivy-action@master
-      with:
-        image-ref: ${{ secrets.DOCR_REGISTRY }}/fastapi-app:latest
-        format: 'table'
-        exit-code: '1'
-        ignore-unfixed: true
-        vuln-type: 'os,library'
 
     # -------------------------
     # 7. SETUP KUBECTL
