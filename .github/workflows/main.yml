@@ -57,8 +57,16 @@ jobs:
     # -------------------------
     # 5. TRIVY SCAN
     # -------------------------
+    - name: Set Trivy cache directory
+      run: |
+        export TRIVY_TMP_DIR=/home/runner/work/_temp/trivy
+        mkdir -p $TRIVY_TMP_DIR
+        echo "TRIVY_TMP_DIR=$TRIVY_TMP_DIR" >> $GITHUB_ENV
+
     - name: Trivy Security Scan
       uses: aquasecurity/trivy-action@master
+      env:
+        TRIVY_TMP_DIR: ${{ env.TRIVY_TMP_DIR }}
       with:
         image-ref: "fastapi-app:latest"
         format: 'table'
