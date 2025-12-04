@@ -14,6 +14,6 @@ spec:
     spec:
       containers:
       - name: gptcontainer
-        image: fastapi-app
+        image: registry.digitalocean.com/nus-iss-fastapi-registry/fastapi-app:latest
         ports:
         - containerPort: 8000
